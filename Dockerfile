@@ -4,7 +4,7 @@
     WORKDIR /app
     
     # Copy manifest & install deps (cache-friendly)
-    COPY package.json bun.lockb* ./
+    COPY package.json bun.lock ./
     RUN bun install --frozen-lockfile || bun install
     
     # Copy sisa source (kalau pakai volume mount di compose, langkah ini opsional)
