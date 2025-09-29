@@ -3,21 +3,23 @@
 
     WORKDIR /app
     
-    # Copy manifest & install deps (cache-friendly)
-    COPY package.json bun.lock ./
-    RUN bun install --frozen-lockfile || bun install
+    # HTTPS buat download model, AWS SDK, dsb.
+    RUN apt-get update \
+      && apt-get install -y --no-install-recommends ca-certificates \
+      && rm -rf /var/lib/apt/lists/*
     
-    # Copy sisa source (kalau pakai volume mount di compose, langkah ini opsional)
-    COPY . .
-    
-    # Env default
+    # Env default dev
     ENV NODE_ENV=development \
         TFJS_BACKEND=cpu \
-        PORT=3000
+        PORT=3029
     
-    EXPOSE 3000
-    EXPOSE 3266
+    # Install deps dulu (cache-friendly), lalu copy source
+    COPY package.json bun.lockb* ./
+    RUN bun install --frozen-lockfile || bun install
+    COPY . .
     
-    # Jalankan script dev (watcher)
+    EXPOSE 3029 3266
+    
+    # Jalankan watcher
     CMD ["bun","run","dev"]
     
