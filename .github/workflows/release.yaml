@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    if: ${{ github.repository_owner == 'vlrdimir' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Dependencies with Bun
+        run: bun install
+
+      - name: Build the package
+        run: |
+          bun install
+          bun run build
+
+      - name: Create Version PR
+        id: changesets
+        uses: changesets/action@v1.4.1
+        with:
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+          version: bun .github/changeset-version.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Get Version from package.json
+        id: get_version
+        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+
+      - name: Update CHANGELOG.md
+        run: |
+          CURRENT_DATE=$(date +"%Y-%m-%d")
+
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # Prepare changelog content
+          echo "# Changelog" > CHANGELOG.md.new
+          echo "" >> CHANGELOG.md.new
+          echo "Semua perubahan penting pada project ini akan didokumentasikan di file ini." >> CHANGELOG.md.new
+          echo "" >> CHANGELOG.md.new
+          echo "## [${{ env.VERSION }}] - ${CURRENT_DATE}" >> CHANGELOG.md.new
+          echo "" >> CHANGELOG.md.new
+          echo "### Perubahan Minor" >> CHANGELOG.md.new
+
+          if [ -z "$PREV_TAG" ]; then
+            FEAT_CHANGES=$(git log --grep="feat:" --pretty=format:"- %s")
+          else
+            FEAT_CHANGES=$(git log ${PREV_TAG}..HEAD --grep="feat:" --pretty=format:"- %s")
+          fi
+
+          if [ -z "$FEAT_CHANGES" ]; then
+            echo "- Tidak ada perubahan minor" >> CHANGELOG.md.new
+          else
+            echo "$FEAT_CHANGES" >> CHANGELOG.md.new
+          fi
+
+          echo "" >> CHANGELOG.md.new
+          echo "### Perubahan Refactor" >> CHANGELOG.md.new
+
+          if [ -z "$PREV_TAG" ]; then
+            REFACTOR_CHANGES=$(git log --grep="refactor:" --pretty=format:"- %s")
+          else
+            REFACTOR_CHANGES=$(git log ${PREV_TAG}..HEAD --grep="refactor:" --pretty=format:"- %s")
+          fi
+
+          if [ -z "$REFACTOR_CHANGES" ]; then
+            echo "- Tidak ada perubahan refactor" >> CHANGELOG.md.new
+          else
+            echo "$REFACTOR_CHANGES" >> CHANGELOG.md.new
+          fi
+
+          echo "" >> CHANGELOG.md.new
+          echo "### Perubahan Patch" >> CHANGELOG.md.new
+
+          if [ -z "$PREV_TAG" ]; then
+            FIX_CHANGES=$(git log --grep="fix:" --pretty=format:"- %s")
+          else 
+            FIX_CHANGES=$(git log ${PREV_TAG}..HEAD --grep="fix:" --pretty=format:"- %s")
+          fi
+
+          if [ -z "$FIX_CHANGES" ]; then
+            echo "- Tidak ada perubahan patch" >> CHANGELOG.md.new
+          else
+            echo "$FIX_CHANGES" >> CHANGELOG.md.new
+          fi
+
+          # Append existing changelog if it exists
+          if [ -f CHANGELOG.md ]; then
+            # Skip first 4 lines of the existing changelog (title and description)
+            sed -n '5,$p' CHANGELOG.md >> CHANGELOG.md.new
+          fi
+
+          # Replace old changelog with new one
+          mv CHANGELOG.md.new CHANGELOG.md
+
+          # Commit the updated changelog
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG.md for ${{ env.VERSION }}" || echo "No changes to commit"
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          echo "Release Notes:" > release_notes.md
+          echo "## Minor Changes" >> release_notes.md
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            git log --grep="feat:" --pretty=format:"- %h %s" >> release_notes.md
+          else
+            git log ${PREV_TAG}..HEAD --grep="feat:" --pretty=format:"- %h %s" >> release_notes.md
+          fi
+          echo "" >> release_notes.md
+          echo "## Refactor Changes" >> release_notes.md
+          if [ -z "$PREV_TAG" ]; then
+            git log --grep="refactor:" --pretty=format:"- %h %s" >> release_notes.md
+          else
+            git log ${PREV_TAG}..HEAD --grep="refactor:" --pretty=format:"- %h %s" >> release_notes.md
+          fi
+          echo "" >> release_notes.md
+          echo "## Patch Changes" >> release_notes.md
+          if [ -z "$PREV_TAG" ]; then
+            git log --grep="fix:" --pretty=format:"- %h %s" >> release_notes.md
+          else
+            git log ${PREV_TAG}..HEAD --grep="fix:" --pretty=format:"- %h %s" >> release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: trash2treasure-backed@${{ env.VERSION }}
+          name: trash2treasure-backed@${{ env.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          token: ${{ secrets.GH_TOKEN }}

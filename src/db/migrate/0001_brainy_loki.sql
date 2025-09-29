@@ -1,0 +1,1 @@
+ALTER TABLE "history_predict" ALTER COLUMN "percentage" SET DATA TYPE numeric;
