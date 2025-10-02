@@ -4,8 +4,9 @@
     WORKDIR /app
     
     # HTTPS buat download model, AWS SDK, dsb.
+    # Tambahkan libvips-dev yang dibutuhkan oleh sharp
     RUN apt-get update \
-      && apt-get install -y --no-install-recommends ca-certificates \
+      && apt-get install -y --no-install-recommends ca-certificates libvips-dev \
       && rm -rf /var/lib/apt/lists/*
     
     # Env default dev

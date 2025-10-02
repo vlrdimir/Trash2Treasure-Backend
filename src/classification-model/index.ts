@@ -1,6 +1,8 @@
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-cpu"; // atau "@tensorflow/tfjs-backend-wasm"
 import jpeg from "jpeg-js";
+import sharp from "sharp";
+import removeBg from "./remove-bg";
 
 interface PredictionResult {
   label: string;
@@ -23,6 +25,17 @@ export const labels: string[] = [
   "white-glass",
 ];
 
+async function ensureJpegBuffer(imageBuffer: Buffer): Promise<Buffer> {
+  if (sharp) {
+    try {
+      return await sharp(imageBuffer).jpeg().toBuffer();
+    } catch (err) {
+      throw new Error(`Image conversion failed: ${(err as Error).message}`);
+    }
+  }
+  return imageBuffer;
+}
+
 function decodeJpegToTensor(imageBuffer: Buffer): tf.Tensor<tf.Rank.R3> {
   const { width, height, data } = jpeg.decode(imageBuffer, { useTArray: true }); // RGBA
   const numPixels: number = width * height;
@@ -40,7 +53,17 @@ async function predictClassification(
   model: tf.GraphModel,
   imageBuffer: Buffer
 ): Promise<PredictionResult> {
-  const img: tf.Tensor<tf.Rank.R3> = decodeJpegToTensor(imageBuffer); // [H,W,3], float32 0..255
+  const removedBg = await removeBg(imageBuffer);
+  const jpegBuffer = await ensureJpegBuffer(removedBg);
+
+  if (
+    jpegBuffer.length < 2 ||
+    jpegBuffer[0] !== 0xff ||
+    jpegBuffer[1] !== 0xd8
+  ) {
+    throw new Error("Invalid image: JPEG SOI not found");
+  }
+  const img: tf.Tensor<tf.Rank.R3> = decodeJpegToTensor(jpegBuffer); // [H,W,3], float32 0..255
   const resized: tf.Tensor<tf.Rank.R4> = tf.image.resizeNearestNeighbor(
     img.expandDims(0) as tf.Tensor4D,
     [224, 224]
