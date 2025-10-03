@@ -17,7 +17,6 @@ import { savedTutorial } from "./db/schema/saved-tutorial";
 const app = new Elysia()
   .use(cors())
   .use(errorPlugin)
-
   .post(
     "/signup",
     async ({ body }) => {
@@ -70,19 +69,14 @@ const app = new Elysia()
 
       const result = await main(imageBuffer);
 
-      const probabilities = labels.reduce((acc, label, index) => {
-        acc[label] = Number((result.probs?.[index]! * 100).toFixed(2));
-        return acc;
-      }, {} as Record<string, number>);
-
       const create = await db
         .insert(historyPredict)
         .values({
           email: user.email,
           imageUrl,
-          label: result.label as ClassesLabel,
-          percentage: probabilities[result.label]?.toString(),
-          probabilities: probabilities as Probabilities,
+          label: result?.label as ClassesLabel,
+          percentage: result?.percentage.toString(),
+          probabilities: result?.probabilities as Probabilities,
         })
         .returning();
 
@@ -90,9 +84,9 @@ const app = new Elysia()
         status: true,
         result: {
           id: create[0]?.id,
-          label: result.label,
-          percentage: probabilities[result.label],
-          probabilities,
+          label: result?.label,
+          percentage: result?.percentage,
+          probabilities: result?.probabilities,
           imageUrl,
         },
       };
