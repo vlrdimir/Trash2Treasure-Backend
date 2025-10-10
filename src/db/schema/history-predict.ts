@@ -46,6 +46,7 @@ export const historyPredict = pgTable("history_predict", {
     onDelete: "cascade",
   }),
   imageUrl: varchar("image_url", { length: 255 }),
+  imageUrlRemoveBg: varchar("image_url_remove_bg", { length: 255 }),
   label: classes_label("label"),
   percentage: decimal("percentage"),
   probabilities: jsonb("probabilities").$type<Probabilities>(),
