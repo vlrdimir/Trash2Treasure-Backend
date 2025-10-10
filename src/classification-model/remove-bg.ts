@@ -28,7 +28,11 @@ export default async function removeBg(imageBuffer: Buffer) {
   })) as unknown as GradioResult;
 
   const resp = result.data[0]![1] as unknown as GradioResponse;
+
   const url = await fetch(resp.url);
   const buffer = await url.arrayBuffer();
-  return Buffer.from(buffer);
+  return {
+    buffer: Buffer.from(buffer),
+    url: resp.url,
+  };
 }

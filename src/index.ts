@@ -13,6 +13,7 @@ import {
   type Probabilities,
 } from "./db/schema/history-predict";
 import { savedTutorial } from "./db/schema/saved-tutorial";
+import { AppForAI } from "./ai";
 
 const app = new Elysia()
   .use(cors())
@@ -47,6 +48,7 @@ const app = new Elysia()
     }
   )
   .use(auth())
+  .use(AppForAI)
   .get(
     "/",
     ({ user }) => {
@@ -67,16 +69,17 @@ const app = new Elysia()
         body.image.type
       );
 
-      const result = await main(imageBuffer);
+      const { result, urlRemoveBg } = await main(imageBuffer);
 
       const create = await db
         .insert(historyPredict)
         .values({
           email: user.email,
           imageUrl,
-          label: result?.label as ClassesLabel,
-          percentage: result?.percentage.toString(),
-          probabilities: result?.probabilities as Probabilities,
+          imageUrlRemoveBg: urlRemoveBg,
+          label: result[0]?.label as ClassesLabel,
+          percentage: result[0]?.percentage.toString(),
+          probabilities: result[0]?.probabilities as Probabilities,
         })
         .returning();
 
@@ -84,10 +87,9 @@ const app = new Elysia()
         status: true,
         result: {
           id: create[0]?.id,
-          label: result?.label,
-          percentage: result?.percentage,
-          probabilities: result?.probabilities,
-          imageUrl,
+          label: result[0]?.label,
+          percentage: result[0]?.percentage,
+          probabilities: result[0]?.probabilities,
         },
       };
     },

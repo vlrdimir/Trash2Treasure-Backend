@@ -36,11 +36,12 @@ async function ensureJpegBuffer(imageBuffer: Buffer): Promise<Buffer> {
   return imageBuffer;
 }
 
-async function predictClassification(
-  imageBuffer: Buffer
-): Promise<PredictionResult[]> {
+async function predictClassification(imageBuffer: Buffer): Promise<{
+  result: PredictionResult[];
+  urlRemoveBg: string;
+}> {
   const removedBg = await removeBg(imageBuffer);
-  const jpegBuffer = await ensureJpegBuffer(removedBg);
+  const jpegBuffer = await ensureJpegBuffer(removedBg.buffer);
 
   if (
     jpegBuffer.length < 2 ||
@@ -53,19 +54,25 @@ async function predictClassification(
   const client = await Client.connect("g4tes/classification-garbage");
   const result = await client.predict("/predict", [jpegBuffer]);
 
-  return result.data as PredictionResult[];
+  return {
+    result: result.data as PredictionResult[],
+    urlRemoveBg: removedBg.url,
+  };
 }
 
-async function main(imageBuffer: Buffer) {
+async function main(imageBuffer: Buffer): Promise<{
+  result: PredictionResult[];
+  urlRemoveBg: string;
+}> {
   console.log("Model loaded successfully.");
 
   console.log("Image loaded.");
 
   const result = await predictClassification(imageBuffer);
 
-  console.log("Final Prediction:", result);
+  console.log("Final Prediction:", result.result);
 
-  return result[0];
+  return result;
 }
 
 export default main;
