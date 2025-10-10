@@ -3,10 +3,14 @@ import main, { labels } from "./classification-model";
 import cors from "@elysiajs/cors";
 import { user } from "./db/schema/user";
 import { db } from "./db/client";
-import { and, eq, count } from "drizzle-orm";
+import { and, eq, count, desc } from "drizzle-orm";
 import { auth } from "./middleware/guard";
 import { errorPlugin, NotFoundError } from "./lib/error-class";
 import { uploadImage } from "./lib/upload-image";
+import {
+  calculateMostCommonWaste,
+  calculateRecyclingPotential,
+} from "./lib/dashboard-utils";
 import {
   type ClassesLabel,
   historyPredict,
@@ -49,6 +53,53 @@ const app = new Elysia()
   )
   .use(auth())
   .use(AppForAI)
+  .get(
+    "/dashboard",
+    async ({ user }) => {
+      const histories = await db
+        .select()
+        .from(historyPredict)
+        .where(eq(historyPredict.email, user.email))
+        .orderBy(desc(historyPredict.createdAt));
+
+      if (histories.length === 0) {
+        return {
+          status: true,
+          result: {
+            riwayatPindaiTerbaru: [],
+            kontribusiLingkungan: {
+              totalSampahDipindai: "0 Item",
+              jenisPalingUmum: "-",
+              potensiDaurUlang: "Tidak ada data",
+            },
+          },
+        };
+      }
+
+      const riwayatPindaiTerbaru = histories.slice(0, 2).map((h) => ({
+        id: h.id,
+        title: h.label,
+        created_at: h.createdAt,
+      }));
+
+      const totalSampahDipindai = `${histories.length} Item`;
+      const jenisPalingUmum = calculateMostCommonWaste(histories);
+      const potensiDaurUlang = calculateRecyclingPotential(histories);
+
+      return {
+        status: true,
+        result: {
+          riwayatPindaiTerbaru,
+          kontribusiLingkungan: {
+            totalSampahDipindai,
+            jenisPalingUmum,
+            potensiDaurUlang,
+          },
+        },
+      };
+    },
+    { isAuthenticated: true }
+  )
   .get(
     "/",
     ({ user }) => {
