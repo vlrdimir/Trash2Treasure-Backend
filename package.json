@@ -9,14 +9,11 @@
     "pg:gen": "drizzle-kit generate"
   },
   "dependencies": {
-    "@ai-sdk/google": "^2.0.17",
     "@aws-sdk/client-s3": "^3.896.0",
     "@aws-sdk/lib-storage": "^3.896.0",
     "@aws-sdk/s3-request-presigner": "^3.896.0",
     "@elysiajs/cors": "^1.4.0",
     "@neondatabase/serverless": "^1.0.1",
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "ai": "^5.0.60",
     "drizzle-orm": "^0.44.5",
     "elysia": "latest",
