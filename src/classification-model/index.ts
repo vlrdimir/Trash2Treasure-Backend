@@ -1,4 +1,3 @@
-import "@tensorflow/tfjs-backend-cpu"; // atau "@tensorflow/tfjs-backend-wasm"
 import sharp from "sharp";
 import removeBg from "./remove-bg";
 import { Client } from "@gradio/client";
