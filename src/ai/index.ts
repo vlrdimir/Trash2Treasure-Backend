@@ -123,7 +123,6 @@ export const AppForAI = new Elysia({
         .insert(conversations)
         .values({
           email: user.email,
-          title: `Rekomendasi untuk sampah ${label}`,
           initialLabel: label,
           initialImageUrl: imageUrl,
         })
@@ -163,6 +162,7 @@ export const AppForAI = new Elysia({
       await db
         .update(conversations)
         .set({
+          title: body.title,
           tokenUsage: tokenused + (isExistConversation.tokenUsage ?? 0),
           updatedAt: new Date(),
         })
@@ -188,6 +188,7 @@ export const AppForAI = new Elysia({
     },
     {
       body: t.Object({
+        title: t.String(),
         args: t.Array(
           t.Object({
             conversation_id: t.String(),
