@@ -2,6 +2,8 @@ import "@tensorflow/tfjs-backend-cpu"; // atau "@tensorflow/tfjs-backend-wasm"
 import sharp from "sharp";
 import removeBg from "./remove-bg";
 import { Client } from "@gradio/client";
+import { uploadImage } from "../lib/upload-image";
+import moment from "moment";
 
 interface PredictionResult {
   label: string;
@@ -54,9 +56,17 @@ async function predictClassification(imageBuffer: Buffer): Promise<{
   const client = await Client.connect("g4tes/classification-garbage");
   const result = await client.predict("/predict", [jpegBuffer]);
 
+  const uploadImageRemoveBg = await uploadImage(
+    removedBg.buffer,
+    moment().unix() + ".png",
+    "image/png"
+  );
+
+  console.log(uploadImageRemoveBg, "uploadImageRemoveBg");
+
   return {
     result: result.data as PredictionResult[],
-    urlRemoveBg: removedBg.url,
+    urlRemoveBg: uploadImageRemoveBg,
   };
 }
 
